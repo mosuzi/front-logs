@@ -1,0 +1,29 @@
+{
+  "dbName": "front_logs_db_config",
+  "version": 1,
+  "tables": [
+    {
+      "tableName": "logs_table",
+      "option": {
+        "keyPath": "id"
+      },
+      "indexs": [
+        {
+          "key": "id",
+          "option": {
+            "unique": true
+          }
+        },
+        {
+          "key": "message"
+        },
+        {
+          "key": "time"
+        },
+        {
+          "key": "custom"
+        }
+      ]
+    }
+  ]
+}
