@@ -6,7 +6,7 @@ Frontend log engine with ability to send logs to server, auto retry when error o
 
 `npm install --save front-logs`
 
-> development require Node >= 14
+> To develop, require Node >= 14
 
 ## Usage
 
