@@ -8,6 +8,7 @@
     "build": "tsup",
     "build:demo": "tsup --config demo.tsup.config.ts",
     "build:raw": "tsup src/index.ts --dts --no-config",
+    "build:dev": "tsup --config dev.tsup.config.ts",
     "test": "jest"
   },
   "repository": {

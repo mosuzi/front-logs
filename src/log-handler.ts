@@ -1,7 +1,7 @@
 import LogEngine from './log-engine'
 import LogBean, { LogType } from './log-bean'
 import LogRequest from './log-request'
-import engineDefaultTarget from './engine-default-target.json'
+import engineDefaultTarget from './engine-default.json'
 
 export default class LogHandler {
   logEngine: LogEngine

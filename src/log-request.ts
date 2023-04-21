@@ -1,16 +1,6 @@
-const logsPathDefault = 'logs'
-export class GlobalRequest {
-  getGlobalData: (...args: any) => ({})
-  baseDomain: string
-  logsPath: string
-  constructor(baseDomain?: string, getGlobalData?: any, logsPath?: string) {
-    this.getGlobalData = getGlobalData || (() => ({}))
-    this.baseDomain = baseDomain || ''
-    this.logsPath = logsPath || logsPathDefault
-  }
-}
-
-const globalRequestApi: GlobalRequest = new GlobalRequest()
+import engineDefault from './engine-default.json'
+const logsPathDefault = engineDefault.logsPathDefault
+import GlobalRequest, { globalRequestApi } from './global-request'
 
 export default class LogRequest extends GlobalRequest {
   url: string
@@ -40,9 +30,10 @@ export default class LogRequest extends GlobalRequest {
     return (this.baseDomain || globalRequestApi.baseDomain) + (this.url || '')
   }
   getData(): any {
-    return {
-      ...globalRequestApi.getGlobalData(),
-      ...this.params
-    }
+    const data:any = {}
+    if (globalRequestApi.getGlobalData instanceof Function) Object.assign(data, globalRequestApi.getGlobalData())
+    if (this.getGlobalData instanceof Function) Object.assign(data, this.getGlobalData())
+    Object.assign(data, this.params)
+    return data
   }
 }

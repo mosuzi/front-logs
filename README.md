@@ -27,6 +27,8 @@ engine.setLogRequest(request) // register request as a default request of engine
 const handler = new LogHandler()
 handler.connect() // connect to log engine
 
+if (!handler.logEngine) return // if connection failed, means engine does not exist and log will not be sent
+
 const log = new LogBean('This is a warning', 'WARN')
 handler.appendLog(log) // log
 handler.sendLog() // call engine to send log to server

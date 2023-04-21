@@ -1,8 +1,9 @@
 import lifecycle from 'page-lifecycle/dist/lifecycle.es5.js'
-import Idb from 'idb-js'  //  引入Idb
+import Idb from 'idb-js' //  引入Idb
 
 import LogBean from './log-bean'
 import LogRequest from './log-request'
+import { globalRequestApi } from './global-request'
 import {
   doActionDelayed,
   doActionImmediately,
@@ -11,7 +12,7 @@ import {
   setIntervalLength
 } from './send-by-interval'
 import frontLogsDBConfig from './front-logs-db-config.json'
-import engineDefaultTarget from './engine-default-target.json'
+import engineDefaultTarget from './engine-default.json'
 import CustomLogBean from './custom-log-bean'
 const tableName = frontLogsDBConfig.tables[0].tableName
 
@@ -45,8 +46,15 @@ const send = function (logRequest: LogRequest) {
   const toBeSent: LogBean[] = [...this.logs]
   const logRequestSpecified: LogRequest = logRequest || this.logRequest
   if (!logRequestSpecified) throw new Error('No log request specified!')
-  const data: any = logRequestSpecified.getData()
-  data[logRequestSpecified.logsPath] = toBeSent.map((item: LogBean) => ({ ...item.toJSON(), id: item.id, time: item.time }))
+  const data: any = {}
+  if (globalRequestApi.getGlobalData instanceof Function)
+    Object.assign(data, globalRequestApi.getGlobalData())
+  Object.assign(data, logRequestSpecified.getData())
+  data[logRequestSpecified.logsPath] = toBeSent.map((item: LogBean) => ({
+    ...item.toJSON(),
+    id: item.id,
+    time: item.time
+  }))
   return this.sendLogs(logRequestSpecified.getFullUrl(), data).then(() => {
     // after sent, remove those logs
     this.removeSent(this.getLogIds(toBeSent))
@@ -75,11 +83,7 @@ export default class LogEngine {
   _destroyed: boolean
   target: string
   constructor(target: string = engineDefaultTarget.target) {
-    if (
-      window[target] &&
-      !window[target]._destroyed
-    )
-      return window[target]
+    if (window[target] && !window[target]._destroyed) return window[target]
     this.target = target
     const dbHandler = new Idb(frontLogsDBConfig)
     dbHandler.then(db => {
@@ -169,6 +173,8 @@ export default class LogEngine {
     return logs.map((item: LogBean) => item.id)
   }
   setLogRequest(logRequest: LogRequest): LogEngine {
+    if (!logRequest.baseDomain) logRequest.baseDomain = globalRequestApi.baseDomain
+    if (!logRequest.getGlobalData) logRequest.getGlobalData = globalRequestApi.getGlobalData
     this.logRequest = logRequest
     return this
   }
