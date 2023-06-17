@@ -11,11 +11,17 @@ export default class LogBean {
   type: string
   message: string
   time: number
-  constructor(type?: string, message?: string) {
+  // 新增接口相关参数
+  domain: string
+  url: string
+  constructor(type?: string, message?: string, domain?: string, url?: string) {
     this.id = gid()
     this.type = type || ''
     this.message = message || ''
     this.time = new Date().getTime()
+    // 新增接口相关参数
+    this.domain = domain
+    this.url = url
   }
   toString(): string {
     return new Date(this.time).toJSON() + ':[' + this.type + '] ' + this.message
