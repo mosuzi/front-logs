@@ -99,9 +99,11 @@ const isDirectInstance = function (instance, Ctor): boolean {
   if (!instance || !Ctor) return
   return instance.constructor === Ctor
 }
-
+interface allLogs {
+  [index: string]: LogBean[]
+}
 export default class LogEngine {
-  logs: {}
+  logs: allLogs
   // steps: number
   logRequest: LogRequest
   interval: number
@@ -199,7 +201,7 @@ export default class LogEngine {
   }
   removeSent(sentLogIds, key) {
     if (this._destroyed) return
-    this.logs = this.logs[key].filter((item: LogBean) => !sentLogIds.includes(item.id))
+    this.logs[key] = this.logs[key].filter((item: LogBean) => !sentLogIds.includes(item.id))
     if (this.db) {
       this.db.clear_table({ tableName })
       this.logs[key].forEach((log: LogBean) => {

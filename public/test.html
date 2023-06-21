@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Api</title>
+    <script defer src="browser.js" type="text/javascript"></script>
+  </head>
+  <body>
+    <button id="add1">domain+url</button>
+    <button id="add2">url</button>
+    <button id="add3">domain</button>
+    <button id="add4">no</button>
+    <button id="send">send</button>
+
+    <script type="text/javascript">
+      window.onload = function () {
+        const baseDomain = 'http://127.0.0.1:3000'
+        const FG = FrontLogs
+        let engine = new FG.LogEngine()
+        const logHandler = new FG.LogHandler()
+        logHandler.connect()
+        // engine.setSendInterval(2)
+
+        FG.LogRequest.setGlobalArguments({ baseDomain })
+        const logRequest = new FG.LogRequest({ url: '/push/logs', logsPath: 'customLogs' })
+        engine.setLogRequest(logRequest)
+        FG.LogRequest.setGlobalArguments({
+          getGlobalData: {
+            AccessKey: '38d9a521-ddcf-49f7-af4c-ad3ea4041699',
+            Dehooptoken:
+              'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJkZWhvb3B1c2VyaWQiOiIzMzgzMjUxNzczNjIyODQ1NDQiLCJ0ZW5hbnRpZCI6IjQxMDUyNzk0NTMyOTczNzcyOCIsImV4cCI6MTY4Njg4MzMyNywiaWF0IjoxNjg2NjI0MTI3fQ.ZkRPBYo4MNX-1_ugOxlvrpwGo1IW5yZ2E9JxOXPxbPsuMe9_5fxMfTRkSn-iAxb54zWsp1zZotFwNI-ULxUDnw'
+          }
+        })
+
+        let c = 1
+        const add1 = document.querySelector('#add1')
+        add1.onclick = function () {
+          const log = new FG.LogBean(
+            'custom type',
+            'custom api, hello ' + c++,
+            'http://121.89.247.94:30104',
+            '/dehoop-admin/api/receivelogs/receiveLogs'
+          )
+          logHandler.appendCustomLog(log)
+          console.log(log.toString())
+        }
+
+        const add2 = document.querySelector('#add2')
+        add2.onclick = function () {
+          const log = new FG.LogBean('custom type', 'custom api, hello 2', null, '/test')
+          logHandler.appendCustomLog(log)
+          console.log(log.toString())
+        }
+
+        const add3 = document.querySelector('#add3')
+        add3.onclick = function () {
+          const log = new FG.LogBean(
+            'custom type',
+            'custom api, hello 3',
+            'http://121.89.247.94:30104'
+          )
+          logHandler.appendCustomLog(log)
+          console.log(log.toString())
+        }
+
+        const add4 = document.querySelector('#add4')
+        add4.onclick = function () {
+          const log = new FG.LogBean('custom type', 'custom api, hello 4')
+          logHandler.appendCustomLog(log)
+          console.log(log.toString())
+        }
+
+        const send = document.querySelector('#send')
+        send.onclick = function () {
+          logHandler.sendLog()
+          console.log(engine.logs)
+        }
+      }
+    </script>
+  </body>
+</html>
