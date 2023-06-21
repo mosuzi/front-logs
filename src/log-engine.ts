@@ -99,11 +99,11 @@ const isDirectInstance = function (instance, Ctor): boolean {
   if (!instance || !Ctor) return
   return instance.constructor === Ctor
 }
-interface allLogs {
+interface LogMap {
   [index: string]: LogBean[]
 }
 export default class LogEngine {
-  logs: allLogs
+  logs: LogMap
   // steps: number
   logRequest: LogRequest
   interval: number
