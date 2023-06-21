@@ -2,8 +2,8 @@ import LogBean from './log-bean'
 
 export default class CustomLogBean extends LogBean {
   customMessage: string
-  constructor(type?: string, customMessage?: string) {
-    super(type)
+  constructor(type?: string, customMessage?: string, domain?: string, url?: string) {
+    super(type, '', domain, url)
     this.customMessage = customMessage
   }
   toJSON() {
