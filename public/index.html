@@ -10,6 +10,8 @@
   <body>
     <button id="append">记录</button>
     <button id="append2">记录2</button>
+    <button id="append3">记录3</button>
+    <button id="append4">记录4</button>
     <button id="submit">发送</button>
     <button id="delete">删除</button>
     <button id="start">启动</button>
@@ -20,7 +22,7 @@
       window.onload = function () {
         const FG = FrontLogs
         logEngine = new FG.LogEngine()
-        logEngine.setSendInterval(3)
+        logEngine.setSendInterval(9)
         FG.LogRequest.setGlobalArguments({ baseDomain })
         const logRequest = new FG.LogRequest({ url: '/push/logs', logsPath: 'customLogs' })
         logEngine.setLogRequest(logRequest)
@@ -30,6 +32,7 @@
         const logHandler2 = new FG.LogHandler()
         logHandler2.connect()
         let count = 0
+
         const appendBtn = document.getElementById('append')
         appendBtn.onclick = function () {
           const log = new FG.LogBean('custom type', 'hello world!!!!!!!: ' + count)
@@ -39,11 +42,40 @@
         }
         const appendBtn2 = document.getElementById('append2')
         appendBtn2.onclick = function () {
-          const log = new FG.LogBean('custom type', 'second handler!!!!!!!: ' + count)
+          const log = new FG.LogBean(
+            'custom type',
+            'second handler!!!!!!!: ' + count,
+            'http://127.0.0.1:2222'
+          )
           logHandler2.appendCustomLog(log)
           console.log(log.toString())
           count++
         }
+        const appendBtn3 = document.getElementById('append3')
+        appendBtn3.onclick = function () {
+          const log = new FG.LogBean(
+            'custom type',
+            'second handler!!!!!!!: ' + count,
+            undefined,
+            '/test/custom/api/3333'
+          )
+          logHandler2.appendCustomLog(log)
+          console.log(log.toString())
+          count++
+        }
+        const appendBtn4 = document.getElementById('append4')
+        appendBtn4.onclick = function () {
+          const log = new FG.LogBean(
+            'custom type',
+            'second handler!!!!!!!: ' + count,
+            'http://127.0.0.1:4444',
+            '/test/4444'
+          )
+          logHandler2.appendCustomLog(log)
+          console.log(log.toString())
+          count++
+        }
+
         const submitBtn = document.getElementById('submit')
         submitBtn.onclick = function () {
           logHandler.sendLog()

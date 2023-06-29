@@ -15,7 +15,6 @@ import frontLogsDBConfig from './front-logs-db-config.json'
 import engineDefaultTarget from './engine-default.json'
 import CustomLogBean from './custom-log-bean'
 const tableName = frontLogsDBConfig.tables[0].tableName
-const DEFAULT = 'DEFAULT'
 
 const generateRequestBlob = function (data: any): Blob {
   return new Blob([JSON.stringify(data)], {
@@ -41,43 +40,51 @@ const fetchLogs = function (url: string, data: any): Promise<void> {
     })
 }
 
-const send = function (defaultLogRequest: LogRequest) {
+interface LogMap {
+  [index: string]: LogBean[]
+}
+const send = function (logRequest: LogRequest) {
   if (this._destroyed) return
-  const keys = Object.keys(this.logs)
-  if (!keys.length) return
-  const toBeSent: any = { ...this.logs }
-  keys.map(key => {
-    const data: any = {}
+  if (!this.logs.length) return
+  const logRequestSpecified: LogRequest = logRequest || this.logRequest
+  if (!logRequestSpecified) throw new Error('No log request specified!')
 
-    const logRequestSpecified: LogRequest = defaultLogRequest || this.logRequest
-    if (!logRequestSpecified) throw new Error('No log request specified!')
+  // 数组分组
+  let toBeSent: LogMap = {}
+  this.logs.map(log => {
+    const fullPath = `${
+      typeof log.domain === 'string' ? log.domain : logRequestSpecified.baseDomain
+    }====${typeof log.url === 'string' ? log.url : logRequestSpecified.url}`
+    if (toBeSent[fullPath] && toBeSent[fullPath] instanceof Array) {
+      toBeSent[fullPath].push(log)
+    } else {
+      toBeSent[fullPath] = [log]
+    }
+  })
+
+  const apis = Object.keys(toBeSent).map(key => {
+    const data: any = {}
     if (globalRequestApi.getGlobalData instanceof Function)
       Object.assign(data, globalRequestApi.getGlobalData())
-    Object.assign(data, logRequestSpecified.getData())
 
-    let api = key.split('===')
-    let request = logRequestSpecified
-    if (
-      (api[0] !== DEFAULT && api[0] !== logRequestSpecified.baseDomain) ||
-      (api[1] !== DEFAULT && api[1] !== logRequestSpecified.url)
-    ) {
-      request = new LogRequest({
-        baseDomain: api[0] === DEFAULT ? logRequestSpecified.baseDomain : api[0],
-        url: api[1] === DEFAULT ? logRequestSpecified.url : api[1],
-        logsPath: 'customLogs'
-      })
-    }
+    const path = key.split('====')
+    const request = new LogRequest({
+      baseDomain: path[0],
+      url: path[1],
+      logsPath: 'customLogs'
+    })
+    Object.assign(data, request.getData())
+
     data[request.logsPath] = toBeSent[key].map((item: LogBean) => ({
       ...item.toJSON(),
       id: item.id,
       time: item.time
     }))
-
-    this.sendLogs(request.getFullUrl(), data).then(() => {
-      // after sent, remove those logs
-      this.removeSent(this.getLogIds(toBeSent[key]), key)
+    return this.sendLogs(request.getFullUrl(), data).then(() => {
+      this.removeSent(this.getLogIds(toBeSent[key]))
     })
   })
+  return Promise.all(apis)
 }
 
 const insertLog = function (db: any, log: LogBean, custom?: boolean) {
@@ -99,11 +106,9 @@ const isDirectInstance = function (instance, Ctor): boolean {
   if (!instance || !Ctor) return
   return instance.constructor === Ctor
 }
-interface LogMap {
-  [index: string]: LogBean[]
-}
+
 export default class LogEngine {
-  logs: LogMap
+  logs: LogBean[]
   // steps: number
   logRequest: LogRequest
   interval: number
@@ -120,16 +125,15 @@ export default class LogEngine {
       db.queryAll({
         tableName,
         success(r) {
-          that.logs = {}
           if (r) {
             if (!r.length) return
-            r.map(item => {
+            that.logs = r.map(item => {
               const log = item.custom
                 ? new CustomLogBean(item.type, item.message, item.domain, item.url)
                 : new LogBean(item.type, item.message, item.domain, item.url)
               log.id = item.id
               log.time = item.time
-              that.setLogByApi(that.logs, item.domain, item.url, log)
+              return log
             })
           } else {
             console.warn('failed to open frontend logs indexedDB, logs will only store at memory')
@@ -138,7 +142,7 @@ export default class LogEngine {
       })
     })
     this.interval = 300
-    this.logs = {}
+    this.logs = []
     this.setSendInterval(this.interval)
     setAction(send.bind(this))
     // for compatible purpose, check if engine runs on firefox
@@ -161,20 +165,9 @@ export default class LogEngine {
       this.db = null
     }
   }
-  setLogByApi(logs: any, domain, url, log) {
-    if (!domain) {
-      domain = DEFAULT
-    }
-    const api = `${domain}===${typeof url === 'string' ? url : DEFAULT}`
-    if (logs.hasOwnProperty(api) && logs[api].length) {
-      logs[api].push(log)
-    } else {
-      logs[api] = [log]
-    }
-  }
   appendLog(log: LogBean, custom?: boolean) {
     if (this._destroyed) return
-    this.setLogByApi(this.logs, log.domain, log.url, log)
+    this.logs.push(log)
     insertLog(this.db, log, custom)
     doActionDelayed()
   }
@@ -199,12 +192,12 @@ export default class LogEngine {
   sendLogs(url: string, data: any): Promise<void> {
     return Promise.resolve()
   }
-  removeSent(sentLogIds, key) {
+  removeSent(sentLogIds) {
     if (this._destroyed) return
-    this.logs[key] = this.logs[key].filter((item: LogBean) => !sentLogIds.includes(item.id))
+    this.logs = this.logs.filter((item: LogBean) => !sentLogIds.includes(item.id))
     if (this.db) {
       this.db.clear_table({ tableName })
-      this.logs[key].forEach((log: LogBean) => {
+      this.logs.forEach((log: LogBean) => {
         insertLog(this.db, log, !isDirectInstance(log, LogBean))
       })
     }
