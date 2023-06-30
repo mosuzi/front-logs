@@ -3,7 +3,6 @@ import Idb from 'idb-js' //  引入Idb
 
 import LogBean from './log-bean'
 import LogRequest from './log-request'
-import { globalRequestApi } from './global-request'
 import {
   doActionDelayed,
   doActionImmediately,
@@ -40,33 +39,69 @@ const fetchLogs = function (url: string, data: any): Promise<void> {
     })
 }
 
-const send = function (logRequest: LogRequest) {
-  if (this._destroyed) return
-  if (!this.logs.length) return
-  const toBeSent: LogBean[] = [...this.logs]
-  const logRequestSpecified: LogRequest = logRequest || this.logRequest
-  if (!logRequestSpecified) throw new Error('No log request specified!')
-  const data: any = {}
-  if (globalRequestApi.getGlobalData instanceof Function)
-    Object.assign(data, globalRequestApi.getGlobalData())
-  Object.assign(data, logRequestSpecified.getData())
-  data[logRequestSpecified.logsPath] = toBeSent.map((item: LogBean) => ({
-    ...item.toJSON(),
-    id: item.id,
-    time: item.time
-  }))
-  return this.sendLogs(logRequestSpecified.getFullUrl(), data).then(() => {
-    // after sent, remove those logs
-    this.removeSent(this.getLogIds(toBeSent))
+const updateRequest = function (db: any, name: string, logRequest: LogRequest) {
+  if (!db) return
+
+  db.query({
+    tableName,
+    condition: item => item.name == name,
+    success: r => {
+      if (r.length) {
+        db.update({
+          tableName,
+          condition: item => item.name === name,
+          handle: r => {
+            const logs = logRequest.logs.map(log => {
+              return {
+                ...log.toJSON(),
+                id: log.id,
+                time: log.time
+              }
+            })
+            r.logs = JSON.stringify(logs)
+            r.data = JSON.stringify(logRequest.toJSON())
+          }
+        })
+      } else {
+        const logs = logRequest.logs.map(log => {
+          return {
+            ...log.toJSON(),
+            id: log.id,
+            time: log.time
+          }
+        })
+        db.insert({
+          tableName,
+          data: {
+            name,
+            logs: JSON.stringify(logs),
+            data: JSON.stringify(logRequest.toJSON())
+          }
+        })
+      }
+    }
   })
 }
 
-const insertLog = function (db: any, log: LogBean, custom?: boolean) {
-  if (!db) return
-  db.insert({
-    tableName,
-    data: { message: JSON.stringify(log.toJSON()), time: log.time, id: log.id, custom }
+const send = function () {
+  if (this._destroyed) return
+  if (!this.requestMap.size) return
+
+  let requests = []
+  this.requestMap.forEach((item, key) => {
+    if (!item.logs || !item.logs.length) {
+      return
+    }
+    const data: any = {}
+    Object.assign(data, item.getData())
+    data[item.logsPath] = item.logs
+    requests.push(
+      this.sendLogs(item.getFullUrl(), data).then(() => {
+        this.removeSent(key)
+      })
+    )
   })
+  return Promise.all(requests)
 }
 
 const isDirectInstance = function (instance, Ctor): boolean {
@@ -75,9 +110,8 @@ const isDirectInstance = function (instance, Ctor): boolean {
 }
 
 export default class LogEngine {
-  logs: LogBean[]
-  // steps: number
-  logRequest: LogRequest
+  requestMap: Map<string, LogRequest>
+
   interval: number
   db: any
   _destroyed: boolean
@@ -93,14 +127,21 @@ export default class LogEngine {
         tableName,
         success(r) {
           if (r) {
+            if (!that.requestMap) {
+              that.requestMap = new Map()
+            }
             if (!r.length) return
-            that.logs = r.map(item => {
-              const log = item.custom
-                ? new CustomLogBean(item.type, item.message)
-                : new LogBean(item.type, item.message)
-              log.id = item.id
-              log.time = item.time
-              return log
+            r.map(item => {
+              const data = JSON.parse(item.data)
+              const logs = JSON.parse(item.logs)
+              const request = new LogRequest(
+                data.baseDomain,
+                data.url,
+                data.params,
+                data.logsPath,
+                logs
+              )
+              that.requestMap.set(item.name, request)
             })
           } else {
             console.warn('failed to open frontend logs indexedDB, logs will only store at memory')
@@ -109,7 +150,7 @@ export default class LogEngine {
       })
     })
     this.interval = 300
-    this.logs = []
+    this.requestMap = new Map()
     this.setSendInterval(this.interval)
     setAction(send.bind(this))
     // for compatible purpose, check if engine runs on firefox
@@ -132,10 +173,13 @@ export default class LogEngine {
       this.db = null
     }
   }
-  appendLog(log: LogBean, custom?: boolean) {
+  appendLog(name: string) {
     if (this._destroyed) return
-    this.logs.push(log)
-    insertLog(this.db, log, custom)
+    const request = this.getLogRequest(name)
+    if (!request) {
+      return
+    }
+    updateRequest(this.db, name, request)
     doActionDelayed()
   }
   setSendInterval(interval: number): LogEngine {
@@ -150,32 +194,30 @@ export default class LogEngine {
   }
   // send message using sendBeacon()
   // each log will be serialized via log.toJSON()
-  send(logRequest?: LogRequest) {
+  send() {
     if (this._destroyed) return
-    doActionImmediately(undefined, logRequest)
+    doActionImmediately()
   }
   // sendLogs() will be overwritten after instance constructed and become a real call-request method `fetchLogs()` or `sendBeacon()`
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sendLogs(url: string, data: any): Promise<void> {
     return Promise.resolve()
   }
-  removeSent(sentLogIds) {
+  removeSent(name: string) {
     if (this._destroyed) return
-    this.logs = this.logs.filter((item: LogBean) => !sentLogIds.includes(item.id))
+    this.requestMap.delete(name)
     if (this.db) {
       this.db.clear_table({ tableName })
-      this.logs.forEach((log: LogBean) => {
-        insertLog(this.db, log, !isDirectInstance(log, LogBean))
+      this.requestMap.forEach((value, key) => {
+        updateRequest(this.db, key, value)
       })
     }
   }
-  getLogIds(logs: LogBean[]): string[] {
-    return logs.map((item: LogBean) => item.id)
+
+  setLogRequest(name: string, logRequest: LogRequest) {
+    this.requestMap.set(name, logRequest)
   }
-  setLogRequest(logRequest: LogRequest): LogEngine {
-    if (!logRequest.baseDomain) logRequest.baseDomain = globalRequestApi.baseDomain
-    if (!logRequest.getGlobalData) logRequest.getGlobalData = globalRequestApi.getGlobalData
-    this.logRequest = logRequest
-    return this
+  getLogRequest(name: string): LogRequest {
+    return this.requestMap.get(name)
   }
 }

@@ -6,17 +6,24 @@ import engineDefaultTarget from './engine-default.json'
 export default class LogHandler {
   logEngine: LogEngine
   logRequest: LogRequest
-  constructor() {
-  }
+  requestName: string
+  unsentRequest: LogRequest
+  unsentName: string
+
+  constructor() {}
   /**
    * connect to log engine,
    * if engine not exists, class Engine will auto generate it self
    */
   connect(engineTarget: string = engineDefaultTarget.target): LogHandler {
     if (!window[engineTarget]) {
+      console.error(' no logEngine')
       return
     } else {
       this.logEngine = window[engineTarget]
+      if (this.unsentRequest) {
+        this.setRequest(this.unsentRequest, this.unsentName)
+      }
     }
     return this
   }
@@ -28,8 +35,13 @@ export default class LogHandler {
    */
   appendLog(message: string, type: string = LogType.INFO): LogHandler {
     this.checkConnection()
+    if (!this.checkRequest()) {
+      throw new Error('You need to connect to log request by using setRequest(...args) method!')
+    }
+
     const logBean = new LogBean(type, message)
-    this.logEngine && this.logEngine.appendLog(logBean)
+    this.logRequest && this.logRequest.appendLog(logBean)
+    this.logEngine && this.logEngine.appendLog(this.requestName)
     return this
   }
   /**
@@ -37,25 +49,54 @@ export default class LogHandler {
    * log must be an instance of LogBean
    */
   appendCustomLog(log: LogBean): LogHandler {
-    if (!log.toJSON) {log.toJSON = () => ({})}
+    if (!log.toJSON) {
+      log.toJSON = () => ({})
+    }
     this.checkConnection()
-    this.logEngine && this.logEngine.appendLog(log, true)
+    if (!this.checkRequest()) {
+      throw new Error('You need to connect to log request by using setRequest(...args) method!')
+    }
+
+    this.logRequest && this.logRequest.appendLog(log)
+    this.logEngine && this.logEngine.appendLog(this.requestName)
+
     return this
   }
   /**
    * call log engine to send log into backend
    */
-  sendLog(): LogHandler {
+  send(): LogHandler {
     this.checkConnection()
-    this.logEngine && this.logEngine.send(this.logRequest)
+    if (!this.checkRequest()) {
+      throw new Error('You need to connect to log request by using setRequest(...args) method!')
+    }
+    this.logEngine && this.logEngine.send()
     return this
   }
   checkConnection() {
     if (!this.logEngine)
       throw new Error('You need to connect to log engine by using connect() method!')
   }
-  setRequest(logRequest: LogRequest): LogHandler {
-    this.logRequest = logRequest
+  checkRequest() {
+    if (!this.logRequest) {
+      return false
+    } else {
+      return true
+    }
+  }
+  setRequest(logRequest: LogRequest, name = 'DEFAULT'): LogHandler {
+    if (!this.logEngine) {
+      this.unsentRequest = logRequest
+      this.unsentName = name
+    } else {
+      this.logRequest = logRequest
+      this.requestName = name
+      this.logEngine.setLogRequest(name, logRequest)
+    }
     return this
+  }
+  getRequest(name = 'DEFAULT'): LogRequest {
+    this.checkConnection()
+    return this.logEngine.getLogRequest(name)
   }
 }
