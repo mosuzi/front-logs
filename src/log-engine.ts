@@ -40,65 +40,32 @@ const fetchLogs = function (url: string, data: any): Promise<void> {
     })
 }
 
-interface LogMap {
-  [index: string]: LogBean[]
-}
 const send = function (logRequest: LogRequest) {
   if (this._destroyed) return
   if (!this.logs.length) return
+  const toBeSent: LogBean[] = [...this.logs]
   const logRequestSpecified: LogRequest = logRequest || this.logRequest
   if (!logRequestSpecified) throw new Error('No log request specified!')
-
-  // 数组分组
-  let toBeSent: LogMap = {}
-  this.logs.map(log => {
-    const fullPath = `${
-      typeof log.domain === 'string' ? log.domain : logRequestSpecified.baseDomain
-    }====${typeof log.url === 'string' ? log.url : logRequestSpecified.url}`
-    if (toBeSent[fullPath] && toBeSent[fullPath] instanceof Array) {
-      toBeSent[fullPath].push(log)
-    } else {
-      toBeSent[fullPath] = [log]
-    }
+  const data: any = {}
+  if (globalRequestApi.getGlobalData instanceof Function)
+    Object.assign(data, globalRequestApi.getGlobalData())
+  Object.assign(data, logRequestSpecified.getData())
+  data[logRequestSpecified.logsPath] = toBeSent.map((item: LogBean) => ({
+    ...item.toJSON(),
+    id: item.id,
+    time: item.time
+  }))
+  return this.sendLogs(logRequestSpecified.getFullUrl(), data).then(() => {
+    // after sent, remove those logs
+    this.removeSent(this.getLogIds(toBeSent))
   })
-
-  const apis = Object.keys(toBeSent).map(key => {
-    const data: any = {}
-    if (globalRequestApi.getGlobalData instanceof Function)
-      Object.assign(data, globalRequestApi.getGlobalData())
-
-    const path = key.split('====')
-    const request = new LogRequest({
-      baseDomain: path[0],
-      url: path[1],
-      logsPath: 'customLogs'
-    })
-    Object.assign(data, request.getData())
-
-    data[request.logsPath] = toBeSent[key].map((item: LogBean) => ({
-      ...item.toJSON(),
-      id: item.id,
-      time: item.time
-    }))
-    return this.sendLogs(request.getFullUrl(), data).then(() => {
-      this.removeSent(this.getLogIds(toBeSent[key]))
-    })
-  })
-  return Promise.all(apis)
 }
 
 const insertLog = function (db: any, log: LogBean, custom?: boolean) {
   if (!db) return
   db.insert({
     tableName,
-    data: {
-      message: JSON.stringify(log.toJSON()),
-      time: log.time,
-      id: log.id,
-      domain: log.domain,
-      url: log.url,
-      custom
-    }
+    data: { message: JSON.stringify(log.toJSON()), time: log.time, id: log.id, custom }
   })
 }
 
@@ -129,8 +96,8 @@ export default class LogEngine {
             if (!r.length) return
             that.logs = r.map(item => {
               const log = item.custom
-                ? new CustomLogBean(item.type, item.message, item.domain, item.url)
-                : new LogBean(item.type, item.message, item.domain, item.url)
+                ? new CustomLogBean(item.type, item.message)
+                : new LogBean(item.type, item.message)
               log.id = item.id
               log.time = item.time
               return log
