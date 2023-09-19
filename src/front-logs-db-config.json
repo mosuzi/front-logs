@@ -5,23 +5,20 @@
     {
       "tableName": "logs_table",
       "option": {
-        "keyPath": "id"
+        "keyPath": "name"
       },
       "indexs": [
         {
-          "key": "id",
+          "key": "name",
           "option": {
             "unique": true
           }
         },
         {
-          "key": "message"
+          "key": "data"
         },
         {
-          "key": "time"
-        },
-        {
-          "key": "custom"
+          "key": "logs"
         }
       ]
     }
