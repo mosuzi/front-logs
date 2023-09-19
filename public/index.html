@@ -8,65 +8,64 @@
     <script defer src="browser.js" type="text/javascript"></script>
   </head>
   <body>
-    <button id="append">记录</button>
-    <button id="append2">记录2</button>
-    <button id="submit">发送</button>
-    <button id="delete">删除</button>
-    <button id="start">启动</button>
-    <button id="close">停止</button>
+    <div class="div">
+      <button id="bind1">绑定1</button>
+      <button id="append1">记录1</button>
+      <button id="send1">发送1</button>
+    </div>
+
+    <div class="div">
+      <button id="bind2">绑定2</button>
+      <button id="append2">记录2</button>
+      <button id="send2">发送1</button>
+    </div>
+    <div class="div">
+      <button id="bind3">绑定3</button>
+      <button id="append3">记录3</button>
+      <button id="send3">发送1</button>
+    </div>
+    <div class="div">
+      <button id="bind4">绑定4</button>
+      <button id="append4">记录4</button>
+      <button id="send4">发送1</button>
+    </div>
+
     <script type="text/javascript">
-      let logEngine
-      const baseDomain = 'http://127.0.0.1:3000'
       window.onload = function () {
         const FG = FrontLogs
-        logEngine = new FG.LogEngine()
-        logEngine.setSendInterval(3)
-        FG.LogRequest.setGlobalArguments({ baseDomain })
-        const logRequest = new FG.LogRequest({ url: '/push/logs', logsPath: 'customLogs' })
-        logEngine.setLogRequest(logRequest)
-        logEngine.send()
-        const logHandler = new FG.LogHandler()
-        logHandler.connect()
-        const logHandler2 = new FG.LogHandler()
-        logHandler2.connect()
-        let count = 0
-        const appendBtn = document.getElementById('append')
-        appendBtn.onclick = function () {
-          const log = new FG.LogBean('custom type', 'hello world!!!!!!!: ' + count)
-          logHandler.appendCustomLog(log)
-          console.log(log.toString())
-          count++
+        const logEngine = new FG.LogEngine()
+        const handler1 = new FG.LogHandler()
+        const handler2 = new FG.LogHandler()
+        const handler3 = new FG.LogHandler()
+        const handler4 = new FG.LogHandler()
+
+        setClick(FG, handler1, 1, 'custom hhhh', 'http://127.0.0.1:1111', '/test1')
+        setClick(FG, handler2, 2, '', 'http://127.0.0.1:2222')
+        setClick(FG, handler3, 3, 'custom hhhh', '', '/test3')
+        setClick(FG, handler4, 4)
+      }
+
+      function setClick(FG, handler, num, customLog, domain, url) {
+        const bind = document.getElementById('bind' + num)
+        bind.onclick = function () {
+          handler.connect()
+          const name = 'request' + num
+          const request = handler.getRequest(name) || new FG.LogRequest(domain, url)
+          // console.log(new FG.LogRequest())
+          handler.setRequest(request, name)
         }
-        const appendBtn2 = document.getElementById('append2')
-        appendBtn2.onclick = function () {
-          const log = new FG.LogBean('custom type', 'second handler!!!!!!!: ' + count)
-          logHandler2.appendCustomLog(log)
-          console.log(log.toString())
-          count++
+        const append = document.getElementById('append' + num)
+        append.onclick = function () {
+          if (customLog) {
+            const log = new FG.LogBean('custom', customLog)
+            handler.appendCustomLog(log)
+          } else {
+            handler.appendLog('test' + num)
+          }
         }
-        const submitBtn = document.getElementById('submit')
-        submitBtn.onclick = function () {
-          logHandler.sendLog()
-        }
-        const deleteBtn = document.getElementById('delete')
-        deleteBtn.onclick = function () {
-          fetch(baseDomain + '/delete/logs', { method: 'GET' }).then(resp => {
-            if (resp.ok) count = 0
-          })
-        }
-        const startBtn = document.getElementById('start')
-        startBtn.onclick = function () {
-          if (logEngine) return
-          logEngine = new FG.LogEngine()
-          logEngine.setSendInterval(3)
-          logEngine.setLogRequest(logRequest)
-          logEngine.send()
-        }
-        const closeBtn = document.getElementById('close')
-        closeBtn.onclick = function () {
-          if (!logEngine) return
-          logEngine.destroy()
-          logEngine = null
+        const send = document.getElementById('send' + num)
+        send.onclick = function () {
+          handler.send()
         }
       }
     </script>
