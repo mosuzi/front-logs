@@ -8,7 +8,7 @@ export default class LogRequest {
     public url = '',
     public params = {},
     public logsPath = logsPathDefault,
-    public logs = []
+    public logs: LogBean[] = []
   ) {}
   appendLog(log: LogBean) {
     this.logs.push(log)

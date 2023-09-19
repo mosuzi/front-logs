@@ -2,6 +2,7 @@ import lifecycle from 'page-lifecycle/dist/lifecycle.es5.js'
 import Idb from 'idb-js' //  引入Idb
 
 import LogBean from './log-bean'
+import CustomLogBean from './custom-log-bean'
 import LogRequest from './log-request'
 import {
   doActionDelayed,
@@ -12,7 +13,7 @@ import {
 } from './send-by-interval'
 import frontLogsDBConfig from './front-logs-db-config.json'
 import engineDefaultTarget from './engine-default.json'
-import CustomLogBean from './custom-log-bean'
+import { gid } from './utils/uuid.util'
 const tableName = frontLogsDBConfig.tables[0].tableName
 
 const generateRequestBlob = function (data: any): Blob {
@@ -39,6 +40,10 @@ const fetchLogs = function (url: string, data: any): Promise<void> {
     })
 }
 
+const packLog = function (logs: LogBean[]) {
+  return JSON.stringify(logs.map(log => ({ message: JSON.stringify(log) })))
+}
+
 const updateRequest = function (db: any, name: string, logRequest: LogRequest) {
   if (!db) return
 
@@ -51,14 +56,14 @@ const updateRequest = function (db: any, name: string, logRequest: LogRequest) {
           tableName,
           condition: item => item.name === name,
           handle: r => {
-            const logs = logRequest.logs.map(log => {
+            const logs: LogBean[] = logRequest.logs.map(log => {
               return {
                 ...log.toJSON(),
                 id: log.id,
                 time: log.time
               }
             })
-            r.logs = JSON.stringify(logs)
+            r.logs = packLog(logs)
             r.data = JSON.stringify(logRequest.toJSON())
           }
         })
@@ -74,7 +79,7 @@ const updateRequest = function (db: any, name: string, logRequest: LogRequest) {
           tableName,
           data: {
             name,
-            logs: JSON.stringify(logs),
+            logs: packLog(logs),
             data: JSON.stringify(logRequest.toJSON())
           }
         })
@@ -89,10 +94,8 @@ const send = function () {
 
   let requests = []
   this.requestMap.forEach((item, key) => {
-    if (!item.logs || !item.logs.length) {
-      return
-    }
-    const data: any = {}
+    if (!item.logs || !item.logs.length) return
+    const data = {} as any
     Object.assign(data, item.getData())
     data[item.logsPath] = item.logs
     requests.push(
@@ -104,10 +107,49 @@ const send = function () {
   return Promise.all(requests)
 }
 
-const isDirectInstance = function (instance, Ctor): boolean {
-  if (!instance || !Ctor) return
-  return instance.constructor === Ctor
+const parseCacheData = function (data) {
+  let newData = {}
+  try {
+    newData = JSON.parse(data)
+  } catch (e) {}
+  return newData
 }
+
+const parseCacheLogs = function (logs) {
+  let newLogs = []
+  try {
+    newLogs = JSON.parse(logs)
+  } catch (e) {}
+  return newLogs
+}
+
+const parseSingleCache = function (item) {
+  if (!item.data) return
+  const data = parseCacheData(item.data) as any
+  const logs = parseCacheLogs(item.logs)
+  if (!logs.length) return
+  const request = new LogRequest(
+    data.baseDomain,
+    data.url,
+    data.params,
+    data.logsPath,
+    logs.map(log => new CustomLogBean(log.type, log.message))
+  )
+  this.requestMap.set(item.name, request)
+}
+
+const readCache = function (r) {
+  if (!r) {
+    console.warn('failed to open frontend logs indexedDB, logs will only store at memory')
+    return
+  }
+  if (!this.requestMap) {
+    this.requestMap = new Map()
+  }
+  if (!r.length) return
+  r.forEach(parseSingleCache.bind(this))
+}
+
 interface LogMap {
   [index: string]: LogBean[]
 }
@@ -117,6 +159,7 @@ export default class LogEngine {
   interval: number
   db: any
   _destroyed: boolean
+  _id: string
   target: string
   constructor(target: string = engineDefaultTarget.target) {
     if (window[target] && !window[target]._destroyed) return window[target]
@@ -127,28 +170,7 @@ export default class LogEngine {
       const that = this
       db.queryAll({
         tableName,
-        success(r) {
-          if (r) {
-            if (!that.requestMap) {
-              that.requestMap = new Map()
-            }
-            if (!r.length) return
-            r.map(item => {
-              const data = JSON.parse(item.data)
-              const logs = JSON.parse(item.logs)
-              const request = new LogRequest(
-                data.baseDomain,
-                data.url,
-                data.params,
-                data.logsPath,
-                logs
-              )
-              that.requestMap.set(item.name, request)
-            })
-          } else {
-            console.warn('failed to open frontend logs indexedDB, logs will only store at memory')
-          }
-        }
+        success: readCache.bind(this)
       })
     })
     this.interval = 300
@@ -162,11 +184,14 @@ export default class LogEngine {
     } else {
       this.sendLogs = fetchLogs
     }
+    this._id = gid()
     window[target] = this
     lifecycle.addEventListener('statechange', this.sendListener)
   }
   destroy() {
-    delete window[this.target]
+    if (window[this.target] && window[this.target]._id === this._id) {
+      delete window[this.target]
+    }
     this._destroyed = true
     lifecycle.removeEventListener('statechange', this.sendListener)
     removeAction()
@@ -175,7 +200,7 @@ export default class LogEngine {
       this.db = null
     }
   }
-  appendLog(name: string) {
+  appendRequestByName(name: string) {
     if (this._destroyed) return
     const request = this.getLogRequest(name)
     if (!request) {

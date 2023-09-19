@@ -9,25 +9,25 @@
   </head>
   <body>
     <div class="div">
-      <button id="bind1">绑定1</button>
-      <button id="append1">记录1</button>
-      <button id="send1">发送1</button>
+      <button id="bind1">绑定1 bind1</button>
+      <button id="append1">记录1 record1</button>
+      <button id="send1">发送1 submit1</button>
     </div>
 
     <div class="div">
-      <button id="bind2">绑定2</button>
-      <button id="append2">记录2</button>
-      <button id="send2">发送1</button>
+      <button id="bind2">绑定2 bind2</button>
+      <button id="append2">记录2 record2</button>
+      <button id="send2">发送2 submit2</button>
     </div>
     <div class="div">
-      <button id="bind3">绑定3</button>
-      <button id="append3">记录3</button>
-      <button id="send3">发送1</button>
+      <button id="bind3">绑定3 bind3</button>
+      <button id="append3">记录3 record3</button>
+      <button id="send3">发送3 submit3</button>
     </div>
     <div class="div">
-      <button id="bind4">绑定4</button>
-      <button id="append4">记录4</button>
-      <button id="send4">发送1</button>
+      <button id="bind4">绑定4 bind4</button>
+      <button id="append4">记录4 record4</button>
+      <button id="send4">发送4 submit4</button>
     </div>
 
     <script type="text/javascript">
@@ -39,9 +39,9 @@
         const handler3 = new FG.LogHandler()
         const handler4 = new FG.LogHandler()
 
-        setClick(FG, handler1, 1, 'custom hhhh', 'http://127.0.0.1:1111', '/test1')
-        setClick(FG, handler2, 2, '', 'http://127.0.0.1:2222')
-        setClick(FG, handler3, 3, 'custom hhhh', '', '/test3')
+        setClick(FG, handler1, 1, 'custom hhhh', 'http://127.0.0.1:3000', '/push/logs')
+        setClick(FG, handler2, 2, '', 'http://127.0.0.1:2222') // fake request address
+        setClick(FG, handler3, 3, 'custom hhhh', '', '/test3') // fake request address
         setClick(FG, handler4, 4)
       }
 
@@ -51,7 +51,6 @@
           handler.connect()
           const name = 'request' + num
           const request = handler.getRequest(name) || new FG.LogRequest(domain, url)
-          // console.log(new FG.LogRequest())
           handler.setRequest(request, name)
         }
         const append = document.getElementById('append' + num)

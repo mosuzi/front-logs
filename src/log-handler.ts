@@ -35,13 +35,11 @@ export default class LogHandler {
    */
   appendLog(message: string, type: string = LogType.INFO): LogHandler {
     this.checkConnection()
-    if (!this.checkRequest()) {
-      throw new Error('You need to connect to log request by using setRequest(...args) method!')
-    }
+    this.checkRequest()
 
     const logBean = new LogBean(type, message)
-    this.logRequest && this.logRequest.appendLog(logBean)
-    this.logEngine && this.logEngine.appendLog(this.requestName)
+    this.logRequest.appendLog(logBean)
+    this.logEngine.appendRequestByName(this.requestName)
     return this
   }
   /**
@@ -49,16 +47,11 @@ export default class LogHandler {
    * log must be an instance of LogBean
    */
   appendCustomLog(log: LogBean): LogHandler {
-    if (!log.toJSON) {
-      log.toJSON = () => ({})
-    }
     this.checkConnection()
-    if (!this.checkRequest()) {
-      throw new Error('You need to connect to log request by using setRequest(...args) method!')
-    }
+    this.checkRequest()
 
-    this.logRequest && this.logRequest.appendLog(log)
-    this.logEngine && this.logEngine.appendLog(this.requestName)
+    this.logRequest.appendLog(log)
+    this.logEngine.appendRequestByName(this.requestName)
 
     return this
   }
@@ -67,9 +60,7 @@ export default class LogHandler {
    */
   send(): LogHandler {
     this.checkConnection()
-    if (!this.checkRequest()) {
-      throw new Error('You need to connect to log request by using setRequest(...args) method!')
-    }
+    this.checkRequest()
     this.logEngine && this.logEngine.send()
     return this
   }
@@ -79,9 +70,7 @@ export default class LogHandler {
   }
   checkRequest() {
     if (!this.logRequest) {
-      return false
-    } else {
-      return true
+      throw new Error('You need to set log request by using setRequest(...args) method!')
     }
   }
   setRequest(logRequest: LogRequest, name = 'DEFAULT'): LogHandler {

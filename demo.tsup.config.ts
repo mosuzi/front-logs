@@ -14,7 +14,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: false,
   target: 'es5',
-  minify: true,
+  minify: false,
   watch: false,
   outDir: 'public',
   platform: 'browser',

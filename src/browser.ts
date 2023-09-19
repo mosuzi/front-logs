@@ -1,4 +1,4 @@
-import FrontLogs from './index'
+import * as FrontLogs from './index'
 
 window['FrontLogs'] = FrontLogs
 

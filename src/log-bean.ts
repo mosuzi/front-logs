@@ -23,7 +23,9 @@ export default class LogBean {
   toJSON(): any {
     return {
       type: this.type,
-      message: this.message
+      message: this.message,
+      id: this.id,
+      time: this.time
     }
   }
 }
