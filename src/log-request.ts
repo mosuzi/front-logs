@@ -3,13 +3,26 @@ import LogBean from './log-bean'
 const logsPathDefault = engineDefault.logsPathDefault
 
 export default class LogRequest {
+  url: string
+  baseDomain: string
+  params: unknown
+  logsPath: string
+  logs: LogBean[]
   constructor(
-    public baseDomain = '',
-    public url = '',
-    public params = {},
-    public logsPath = logsPathDefault,
-    public logs: LogBean[] = []
-  ) {}
+    url,
+    args? : {
+      baseDomain: string,
+      params: unknown,
+      logsPath: string,
+      logs: LogBean[]
+    }
+  ) {
+    this.url = url || ''
+    this.baseDomain = args?.baseDomain || ''
+    this.params = args?.params || {}
+    this.logsPath = args?.logsPath || logsPathDefault
+    this.logs = args?.logs || []
+  }
   appendLog(log: LogBean) {
     this.logs.push(log)
   }
@@ -22,7 +35,7 @@ export default class LogRequest {
     return this
   }
   getFullUrl(): string {
-    return this.baseDomain + (this.url || '')
+    return this.baseDomain + this.url
   }
   getData(): any {
     const data: any = {}

@@ -1,4 +1,14 @@
 const eventCallbacks = {}
+const addEventListener = function(type, listener, options) {
+  if (!(listener instanceof Function)) return
+  if (!eventCallbacks[type]) eventCallbacks[type] = []
+  eventCallbacks[type].push(listener)
+}
+const removeEventListener = function(type, listener) {
+  if (!eventCallbacks[type]) return
+  if (!listener || !(listener instanceof Function)) delete eventCallbacks[type]
+  eventCallbacks[type] = eventCallbacks[type].filter(item => item !== listener)
+}
 const config = {
   transform: {
     '^.+\\.[t|j]sx?$': 'babel-jest'
@@ -7,17 +17,22 @@ const config = {
   globals: {
     self: {},
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    addEventListener(type, listener, options) {
-      if (!(listener instanceof Function)) return
-      if (!eventCallbacks[type]) eventCallbacks[type] = []
-      eventCallbacks[type].push(listener)
+    
+    window: {
+      $XFrontLogsEngine: undefined,
+      backup: {},
+      indexedDB: {
+        open() {
+          return {
+            onSuccess: function() {
+              return []
+            }
+          }
+        }
+      }
     },
-    removeEventListener(type, listener) {
-      if (!eventCallbacks[type]) return
-      if (!listener || !(listener instanceof Function)) delete eventCallbacks[type]
-      eventCallbacks[type] = eventCallbacks[type].filter(item => item !== listener)
-    },
-    window: {},
+    addEventListener,
+    removeEventListener,
     navigator: {
       sendBeacon(url, data) {
         // eslint-disable-next-line no-undef
@@ -28,16 +43,8 @@ const config = {
     },
     document: {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      addEventListener(type, listener, options) {
-        if (!(listener instanceof Function)) return
-        if (!eventCallbacks[type]) eventCallbacks[type] = []
-        eventCallbacks[type].push(listener)
-      },
-      removeEventListener(type, listener) {
-        if (!eventCallbacks[type]) return
-        if (!listener || !(listener instanceof Function)) delete eventCallbacks[type]
-        eventCallbacks[type] = eventCallbacks[type].filter(item => item !== listener)
-      },
+      addEventListener,
+      removeEventListener,
       hasFocus() {}
     },
     Blob: class {

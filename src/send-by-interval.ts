@@ -33,6 +33,8 @@ const doActionImmediately = function (retryCount: number = retryTimes, ...args: 
 
 const doActionDelayed = function (retryCount: number = retryTimes, ...args: any): any {
   if (retryCount < 0) {
+    clearTimeout(timeoutId)
+    timeoutId = undefined
     console.warn('pause to fetch log until network is available')
     return // consider that stop action or no network available
   }
@@ -45,6 +47,7 @@ const doActionDelayed = function (retryCount: number = retryTimes, ...args: any)
 
 const removeAction = function (): void {
   clearTimeout(timeoutId)
+  timeoutId = undefined
   action = function (...args: any): any {}
 }
 

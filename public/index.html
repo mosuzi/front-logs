@@ -50,7 +50,7 @@
         bind.onclick = function () {
           handler.connect()
           const name = 'request' + num
-          const request = handler.getRequest(name) || new FG.LogRequest(domain, url)
+          const request = handler.getRequest(name) || new FG.LogRequest(url, { baseDomain: domain })
           handler.setRequest(request, name)
         }
         const append = document.getElementById('append' + num)

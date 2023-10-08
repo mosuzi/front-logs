@@ -128,13 +128,12 @@ const parseSingleCache = function (item) {
   const data = parseCacheData(item.data) as any
   const logs = parseCacheLogs(item.logs)
   if (!logs.length) return
-  const request = new LogRequest(
-    data.baseDomain,
-    data.url,
-    data.params,
-    data.logsPath,
-    logs.map(log => new CustomLogBean(log.type, log.message))
-  )
+  const request = new LogRequest(data.url, {
+    baseDomain: data.baseDomain,
+    params: data.params,
+    logsPath: data.logsPath,
+    logs: logs.map(log => new CustomLogBean(log.type, log.message))
+  })
   this.requestMap.set(item.name, request)
 }
 
